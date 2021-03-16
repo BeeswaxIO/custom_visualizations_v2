@@ -1,7 +1,6 @@
 import * as d3 from 'd3'
 import { sankey, sankeyLinkHorizontal, sankeyLeft } from 'd3-sankey'
 import { handleErrors } from '../common/utils'
-
 import {
   Cell,
   Link,
@@ -9,15 +8,12 @@ import {
   LookerChartUtils,
   VisualizationDefinition
 } from '../types/types'
-
 // Global values provided via the API
 declare var looker: Looker
 declare var LookerCharts: LookerChartUtils
-
 interface Sankey extends VisualizationDefinition {
   svg?: any
 }
-
 const vis: Sankey = {
   id: 'sankey', // id/label not required, but nice for testing and keeping manifests in sync
   label: 'Sankey',
@@ -26,7 +22,7 @@ const vis: Sankey = {
       type: 'array',
       label: 'Color Range',
       display: 'colors',
-      default: ['#dd3333', '#80ce5d', '#f78131', '#369dc1', '#c572d3', '#36c1b3', '#b57052', '#ed69af']
+      default: ['#668CB2']
     },
     label_type: {
       default: 'name',
@@ -50,7 +46,7 @@ const vis: Sankey = {
       <style>
       .node,
       .link {
-        transition: 0.5s opacity;
+        transition: 0.5s all;
       }
       </style>
     `
@@ -63,56 +59,44 @@ const vis: Sankey = {
       min_dimensions: 2, max_dimensions: undefined,
       min_measures: 1, max_measures: 1
     })) return
-
     const width = element.clientWidth
     const height = element.clientHeight
-
     const svg = this.svg
       .html('')
       .attr('width', '100%')
       .attr('height', '100%')
       .append('g')
-
     const dimensions = queryResponse.fields.dimension_like
     const measure = queryResponse.fields.measure_like[0]
-
     //  The standard d3.ScaleOrdinal<string, {}>, causes error
     // `no-inferred-empty-object-type  Explicit type parameter needs to be provided to the function call`
     // https://stackoverflow.com/questions/31564730/typescript-with-d3js-with-definitlytyped
     const color = d3.scaleOrdinal<string[], string[]>()
       .range(config.color_range || vis.options.color_range.default)
-
     const defs = svg.append('defs')
-
     const sankeyInst = sankey()
       .nodeAlign(sankeyLeft)
       .nodeWidth(10)
       .nodePadding(12)
       .extent([[1, 1], [width - 1, height - 6]])
-
     // TODO: Placeholder until @types catches up with sankey
     const newSankeyProps: any = sankeyInst
     newSankeyProps.nodeSort(null)
-
     let link = svg.append('g')
       .attr('class', 'links')
       .attr('fill', 'none')
       .attr('stroke', '#fff')
       .selectAll('path')
-
     let node = svg.append('g')
       .attr('class', 'nodes')
-      .attr('font-family', 'sans-serif')
-      .attr('font-size', 10)
+      .attr('font-family', 'Open Sans, sans-serif')
+      .attr('font-size', 14)
       .selectAll('g')
-
     const graph: any = {
       nodes: [],
       links: []
     }
-
     const nodes = d3.set()
-
     data.forEach(function (d: any) {
       // variable number of dimensions
       const path: any[] = []
@@ -133,7 +117,6 @@ const vis: Sankey = {
             d[key].links.forEach((link: Link) => { drillLinks.push(link) })
           }
         }
-
         graph.links.push({
           'drillLinks': drillLinks,
           'source': source,
@@ -142,22 +125,17 @@ const vis: Sankey = {
         })
       })
     })
-
     const nodesArray = nodes.values()
-
     graph.links.forEach(function (d: Cell) {
       d.source = nodesArray.indexOf(d.source)
       d.target = nodesArray.indexOf(d.target)
     })
-
     graph.nodes = nodes.values().map((d: any) => {
       return {
         name: d.slice(0, d.split('len:')[1])
       }
     })
-
     sankeyInst(graph)
-
     link = link
       .data(graph.links)
       .enter().append('path')
@@ -181,28 +159,24 @@ const vis: Sankey = {
         // Add drill menu event
         const coords = d3.mouse(this)
         const event: object = { pageX: coords[0], pageY: coords[1] }
-        LookerCharts.Utils.openDrillMenu({
-          links: d.drillLinks,
-          event: event
-        })
+        // this one my be usefull later on 
+        // LookerCharts.Utils.openDrillMenu({
+        //   links: d.drillLinks,
+        //   event: event
+        // })
       })
       .on('mouseleave', function (d: Cell) {
         d3.selectAll('.node').style('opacity', 1)
         d3.selectAll('.link').style('opacity', 0.4)
       })
-
     // gradients https://bl.ocks.org/micahstubbs/bf90fda6717e243832edad6ed9f82814
     link.style('stroke', function (d: Cell, i: number) {
-
       // make unique gradient ids
       const gradientID = 'gradient' + i
-
       const startColor = color(d.source.name.replace(/ .*/, ''))
       const stopColor = color(d.target.name.replace(/ .*/, ''))
-
       const linearGradient = defs.append('linearGradient')
         .attr('id', gradientID)
-
       linearGradient.selectAll('stop')
         .data([
           { offset: '10%', color: startColor },
@@ -215,10 +189,8 @@ const vis: Sankey = {
         .attr('stop-color', function (d: Cell) {
           return d.color
         })
-
       return 'url(#' + gradientID + ')'
     })
-
     node = node
       .data(graph.nodes)
       .enter().append('g')
@@ -234,22 +206,24 @@ const vis: Sankey = {
       .on('mouseleave', function (d: Cell) {
         d3.selectAll('.link').style('opacity', 0.4)
       })
-
     node.append('rect')
       .attr('x', function (d: Cell) { return d.x0 })
       .attr('y', function (d: Cell) { return d.y0 })
       .attr('height', function (d: Cell) { return Math.abs(d.y1 - d.y0) })
       .attr('width', function (d: Cell) { return Math.abs(d.x1 - d.x0) })
       .attr('fill', function (d: Cell) { return color(d.name.replace(/ .*/, '')) })
-      .attr('stroke', '#555')
-
+      .attr('stroke', function (d: Cell) { return color(d.name.replace(/ .*/, '')) })
+      .attr('stroke-width', '2')
+      .attr('ry', '2')
+      .attr('rx', '2')
     node.append('text')
       .attr('x', function (d: Cell) { return d.x0 - 6 })
       .attr('y', function (d: Cell) { return (d.y1 + d.y0) / 2 })
       .attr('dy', '0.35em')
-      .style('font-weight', 'bold')
       .attr('text-anchor', 'end')
-      .style('fill', '#222')
+      .attr('font-weight', '400')
+      .attr('fill', '#2F3942')
+      .attr('user-select', 'none')
       .text(function (d: Cell) {
         switch (config.label_type) {
           case 'name':
@@ -263,7 +237,6 @@ const vis: Sankey = {
       .filter(function (d: Cell) { return d.x0 < width / 2 })
       .attr('x', function (d: Cell) { return d.x1 + 6 })
       .attr('text-anchor', 'start')
-
     node.append('title')
       .text(function (d: Cell) { return d.name + '\n' + d.value })
     doneRendering()
