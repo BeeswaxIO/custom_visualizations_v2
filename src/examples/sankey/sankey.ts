@@ -15,8 +15,13 @@ interface Sankey extends VisualizationDefinition {
   svg?: any
 }
 
-const NO_BID_COLOR = '#b14a4a';
-const NO_BID_TEXT = "No Bid";
+const DEFAULT_COLOR = '#668CB2';
+const collorsMapping = [
+  {
+    text: 'No Bid',
+    color: '#b14a4a',
+  },
+]
 
 const vis: Sankey = {
   id: 'sankey', // id/label not required, but nice for testing and keeping manifests in sync
@@ -26,7 +31,7 @@ const vis: Sankey = {
       type: 'array',
       label: 'Color Range',
       display: 'colors',
-      default: ['#668CB2']
+      default: [DEFAULT_COLOR]
     },
     label_type: {
       default: 'name',
@@ -194,10 +199,17 @@ const vis: Sankey = {
           return d.color
         })
 
-        if(d.target.name === NO_BID_TEXT){
-          return NO_BID_COLOR;
+        const customColorMathing = collorsMapping.find((mapping) => {
+          return mapping.text === d.target.name;
+        });
+
+        if(customColorMathing){
+          return customColorMathing.color;
         }
-        return 'url(#' + gradientID + ')'
+
+        console.log(d.target.name);
+
+        return DEFAULT_COLOR;
     })
     node = node
       .data(graph.nodes)
