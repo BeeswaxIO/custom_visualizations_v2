@@ -14,6 +14,10 @@ declare var LookerCharts: LookerChartUtils
 interface Sankey extends VisualizationDefinition {
   svg?: any
 }
+
+const NO_BID_COLOR = '#b14a4a';
+const NO_BID_TEXT = "No Bid";
+
 const vis: Sankey = {
   id: 'sankey', // id/label not required, but nice for testing and keeping manifests in sync
   label: 'Sankey',
@@ -189,7 +193,11 @@ const vis: Sankey = {
         .attr('stop-color', function (d: Cell) {
           return d.color
         })
-      return 'url(#' + gradientID + ')'
+
+        if(d.target.name === NO_BID_TEXT){
+          return NO_BID_COLOR;
+        }
+        return 'url(#' + gradientID + ')'
     })
     node = node
       .data(graph.nodes)
